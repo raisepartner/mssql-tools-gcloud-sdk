@@ -1,9 +1,22 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+FROM debian:buster
 
-RUN apt -y install curl
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list | tee /etc/apt/sources.list.d/msprod.list
-RUN apt update 
-ENV ACCEPT_EULA=y
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt -y install mssql-tools
+RUN apt update
+RUN apt install -y curl
+RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
+
+FROM mcr.microsoft.com/mssql/server:2019-latest
+
+USER root
+
+COPY --from=0 /tmp/google-cloud-sdk.tar.gz /tmp/google-cloud-sdk.tar.gz
+
+RUN mkdir -p /usr/local/gcloud \
+  && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
+  && /usr/local/gcloud/google-cloud-sdk/install.sh
+
+RUN apt update
+RUN apt install -y cron
+
+RUN mkhomedir_helper  mssql
+
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin:/opt/mssql-tools/bin
